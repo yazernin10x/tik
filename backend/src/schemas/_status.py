@@ -1,18 +1,18 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class LevelBase(BaseModel):
+class StatusBase(BaseModel):
     label: str = Field(..., max_length=20)
 
 
-class LevelCreate(LevelBase): ...
+class StatusCreate(StatusBase): ...
 
 
-class LevelRead(LevelBase):
+class StatusRead(StatusBase):
     id: int
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class LevelUpdate(BaseModel):
+class StatusUpdate(BaseModel):
     label: str | None = Field(None, max_length=20)

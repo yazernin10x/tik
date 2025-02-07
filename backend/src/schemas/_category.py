@@ -1,18 +1,18 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class LevelBase(BaseModel):
+class CategoryBase(BaseModel):
     label: str = Field(..., max_length=20)
 
 
-class LevelCreate(LevelBase): ...
+class CategoryCreate(CategoryBase): ...
 
 
-class LevelRead(LevelBase):
+class CategoryRead(CategoryBase):
     id: int
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class LevelUpdate(BaseModel):
+class CategoryUpdate(BaseModel):
     label: str | None = Field(None, max_length=20)
