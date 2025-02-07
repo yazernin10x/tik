@@ -33,17 +33,3 @@ def reassign_module_names(package_name: str, locals_: dict[str, Any]) -> None:
     for value in list(locals_.values()):
         if getattr(value, "__module__", "").startswith(package_name):
             value.__module__ = package_name
-
-
-def create_log(file, level):
-    name = file.split(".")[0]
-    log = logger.bind(**{name: ""})
-    log.add(
-        LOG_DIR / file,
-        level=level,
-        rotation="500 KB",
-        retention="5 days",
-        format="{time} | {level} | {module}:{file}:{line} - {message} | {extra}",
-        filter=lambda record: name in record["extra"],
-    )
-    return log
