@@ -18,7 +18,6 @@ __all__ = [
     "Category",
     "Level",
     "Status",
-    "get_db",
 ]
 
 reassign_module_names(__name__, locals())
