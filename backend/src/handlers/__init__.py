@@ -1,18 +1,22 @@
 from src.utils import reassign_module_names
-from ._orm import (
-    integrity_error,
-    operational_error,
-    invalid_request_error,
-    stale_data_error,
+from .database import (
+    integrity_error_handler,
+    operational_error_handler,
+    invalid_request_error_handler,
+    stale_data_error_handler,
+    not_found_exception_handler,
 )
 from ._validatation import validation_error_handler
+from .utils import handle_error
 
 __all__ = [
-    "integrity_error",
-    "operational_error",
-    "invalid_request_error",
-    "stale_data_error",
+    "integrity_error_handler",
+    "operational_error_handler",
+    "invalid_request_error_handler",
+    "stale_data_error_handler",
     "validation_error_handler",
+    "not_found_exception_handler",
+    "handle_error",
 ]
 
 
