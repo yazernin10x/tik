@@ -12,13 +12,19 @@ from sqlalchemy.orm.exc import StaleDataError, UnmappedInstanceError
 
 
 from src.handlers.utils import handle_error
-from src.exceptions import NotFoundException
+from src.exceptions import CredentialsException, NotFoundException
 
 
 async def not_found_exception_handler(
     request: Request, exc: NotFoundException
 ) -> JSONResponse:
     return await handle_error(request, exc, "Not found")
+
+
+async def credentials_exception_handler(
+    request: Request, exc: CredentialsException
+) -> JSONResponse:
+    return await handle_error(request, exc, "Credentials")
 
 
 async def integrity_error_handler(
@@ -36,7 +42,7 @@ async def operational_error_handler(
 async def invalid_request_error_handler(
     request: Request, exc: InvalidRequestError
 ) -> JSONResponse:
-    return await handle_error(request, exc, "Invalid")
+    return await handle_error(request, exc, "Invalid request")
 
 
 async def stale_data_error_handler(

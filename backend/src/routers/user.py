@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Request, status, Depends
+from fastapi import APIRouter, HTTPException, Request, status, Depends, Path
 from fastapi_pagination import Params
 from fastapi_pagination.links.default import Page
-
+from sqlalchemy.orm import Session
 from fastapi_pagination.ext.sqlalchemy import paginate
 
 from src.routers.pagination import PageResponse
@@ -10,16 +10,19 @@ from sqlalchemy.future import select
 from src.models import User
 from src.backend.config import LOG_APP
 
-from src.routers.utils import raise_not_found_if_absent
-from src.schemas._user import UserCreate, UserRead, UserUpdate
+from src.routers.utils import get_db, raise_not_found_if_absent
+from src.schemas import UserCreate, UserRead, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.post("/", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-async def create(request: Request, data: UserCreate) -> UserRead:
+async def create(data: UserCreate, db: Session = Depends(get_db)) -> UserRead:
     LOG_APP.info(f"Attempting to create a user {data.username}")
-    db = request.state.db
+
+    db_user = db.query(User).filter(User.username == data.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
 
     user = User(
         first_name=data.first_name,
@@ -27,21 +30,20 @@ async def create(request: Request, data: UserCreate) -> UserRead:
         username=data.username,
         email=data.email,
         role=data.role,
-        plain_password=data.password,
+        password=data.password,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
     user_read = UserRead.model_validate(user)
-    LOG_APP.info(f"Comment created successfully: {user_read.id} - {user_read.username}")
+    LOG_APP.info(f"User created successfully: {user_read.id} - {user_read.username}")
     return user_read
 
 
 @router.get("/{id}", response_model=UserRead)
-async def get(request: Request, id: int) -> UserRead:
+async def get(id: int = Path(...), db: Session = Depends(get_db)) -> UserRead:
     LOG_APP.info(f"Attempting to get a user: {id}")
-    db = request.state.db
     user = db.query(User).filter(User.id == id).first()
     raise_not_found_if_absent(user, f"User with ID {id} not found")
 
@@ -51,11 +53,12 @@ async def get(request: Request, id: int) -> UserRead:
 
 
 @router.get("/", response_model=Page[UserRead])
-async def get_all(request: Request, params: Params = Depends()) -> Page[UserRead]:
+async def get_all(
+    params: Params = Depends(), db: Session = Depends(get_db)
+) -> Page[UserRead]:
     LOG_APP.info("Attempting to get users with pagination")
-    db = request.state.db
 
-    users = await paginate(db, select(User), params)
+    users = paginate(db, select(User), params)
 
     raise_not_found_if_absent(users.items, "No users found")
 
@@ -92,9 +95,8 @@ async def update(request: Request, id: int, data: UserUpdate) -> UserRead:
 
 
 @router.delete("/{id}")
-async def delete(request: Request, id: int) -> None:
+async def delete(id: int = Path(...), db: Session = Depends(get_db)) -> None:
     LOG_APP.info(f"Attempting to delete a user: {id}")
-    db = request.state.db
     user = db.query(User).filter(User.id == id).first()
 
     raise_not_found_if_absent(user, f"User with ID {id} not found")

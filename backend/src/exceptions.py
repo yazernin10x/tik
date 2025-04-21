@@ -7,7 +7,7 @@ class NotFoundException(HTTPException):
 
 
 class CredentialsException(HTTPException):
-    def __init__(self, detail: str = "Could not validate credentials"):
+    def __init__(self, detail: str = "Invalid credentials provided"):
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=detail,

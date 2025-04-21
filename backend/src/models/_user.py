@@ -20,7 +20,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     _password: Mapped[bytes] = mapped_column(
-        "password", String(255), nullable=False, init=False
+        "password", String(255), nullable=False, init=False, repr=False
     )
 
     tickets: Mapped[list[Ticket]] = relationship(
@@ -35,38 +35,29 @@ class User(Base):
         "Project", back_populates="creator", cascade="all, delete-orphan", init=False
     )
 
-    plain_password: InitVar[str] = None
+    password: InitVar[str] = None
 
-    def __post_init__(self, plain_password: str):
-        self._password = self._set_password(plain_password)
+    def __post_init__(self, password: str):
+        self.set_password(password)
 
-    @property
-    def password(self) -> bytes:
-        return self._password
-
-    @password.setter
-    def password(self, plain_password: str):
-        self._set_password(plain_password)
-
-    def _set_password(self, plain_password: str):
+    def set_password(self, password: str):
         """Hash and store the password.
 
         Parameters
         ----------
-        plain_password : str
-            The plain text password to be hashed and stored.
+        password_ : str
+            The  text password to be hashed and stored.
         """
         salt = bcrypt.gensalt()
-        password: bytes = plain_password.encode("utf-8")
-        self._password = bcrypt.hashpw(password, salt)
+        self._password = bcrypt.hashpw(password.encode("utf-8"), salt)
 
-    def verify_password(self, plain_password: str) -> bool:
+    def verify_password(self, password: str) -> bool:
         """Check if the provided password matches the stored hash.
 
         Parameters
         ----------
-        plain_password : str
-            The plain text password to be verified.
+        _password : str
+            The  text password to be verified.
 
         Returns
         -------
@@ -75,4 +66,4 @@ class User(Base):
         """
         if self._password is None:
             return False
-        return bcrypt.checkpw(plain_password.encode("utf-8"), self._password)
+        return bcrypt.checkpw(password.encode("utf-8"), self._password)

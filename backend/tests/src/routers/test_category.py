@@ -1,3 +1,4 @@
+from typing import Any
 import pytest
 from fastapi import status
 from sqlalchemy.orm import Session
@@ -9,9 +10,11 @@ from src.exceptions import NotFoundException
 
 @pytest.mark.dependency(name="create-category")
 class TestCreateCategory:
-    def test_201_created(self, app: TestClient, db: Session):
+    def test_201_created(
+        self, app: TestClient, db: Session, user_session: dict[str, Any]
+    ):
         data = {"label": "Test Category"}
-        rep = app.post("/categories/", json=data)
+        rep = app.post("/categories/", json=data, headers=user_session["headers"])
 
         assert rep.status_code == status.HTTP_201_CREATED
 
@@ -26,19 +29,25 @@ class TestCreateCategory:
 
 @pytest.mark.dependency(depends=["create-category"])
 class TestGetCategory:
-    def test_200_ok(self, app: TestClient, db: Session):
+    def test_200_ok(self, app: TestClient, db: Session, user_session: dict[str, Any]):
         category_data = {"label": "Test Category"}
-        rep_create = app.post("/categories/", json=category_data).json()
-        rep_get = app.get(f"/categories/{rep_create["id"]}")
+        rep_create = app.post(
+            "/categories/", json=category_data, headers=user_session["headers"]
+        ).json()
+        rep_get = app.get(
+            f"/categories/{rep_create["id"]}", headers=user_session["headers"]
+        )
 
         assert rep_get.status_code == status.HTTP_200_OK
         assert rep_get.json() == rep_create
 
-    def test_404_not_found(self, app: TestClient, db: Session):
+    def test_404_not_found(
+        self, app: TestClient, db: Session, user_session: dict[str, Any]
+    ):
         category_id = 1
         msg = f"Category with ID {category_id} not found"
         with pytest.raises(NotFoundException, match=msg) as excinfo:
-            rep = app.get(f"/categories/{category_id}")
+            rep = app.get(f"/categories/{category_id}", headers=user_session["headers"])
             assert rep.status_code == status.HTTP_404_NOT_FOUND
 
         assert str(excinfo.value).split(": ")[1] == msg
@@ -67,9 +76,13 @@ class TestGetCategories:
 
 @pytest.mark.dependency(depends=["create-category"])
 class TestUpdateCategory:
-    def test_200_ok_non_empty_data(self, app: TestClient, db: Session):
+    def test_200_ok_non_empty_data(
+        self, app: TestClient, db: Session, user_session: dict[str, Any]
+    ):
         category_data = {"label": "Test Category"}
-        rep_post = app.post("/categories/", json=category_data).json()
+        rep_post = app.post(
+            "/categories/", json=category_data, headers=user_session["headers"]
+        ).json()
 
         new_data = {"label": "New label"}
         rep_get = app.put(f"/categories/{rep_post['id']}", json=new_data)
@@ -77,18 +90,27 @@ class TestUpdateCategory:
         assert rep_get.status_code == status.HTTP_200_OK
         assert rep_get.json() == rep_post | new_data
 
-    def test_200_ok_empty_data(self, app: TestClient, db: Session):
+    def test_200_ok_empty_data(
+        self, app: TestClient, db: Session, user_session: dict[str, Any]
+    ):
         category_data = {"label": "Test Category"}
-        rep_post = app.post("/categories/", json=category_data).json()
-        rep_get = app.put(f"/categories/{rep_post['id']}", json={})
+        rep_post = app.post(
+            "/categories/", json=category_data, headers=user_session["headers"]
+        ).json()
+        rep_get = app.put(
+            f"/categories/{rep_post['id']}", json={}, headers=user_session["headers"]
+        )
 
         assert rep_get.status_code == status.HTTP_200_OK
         assert rep_get.json() == rep_post
 
-    def test_404_not_found(self, app: TestClient, db: Session):
+    def test_404_not_found(
+        self, app: TestClient, db: Session, user_session: dict[str, Any]
+    ):
         category_id = 1
         msg = f"Category with ID {category_id} not found"
         with pytest.raises(NotFoundException, match=msg) as excinfo:
+
             new_data = {"label": "New label"}
             rep = app.put(f"/categories/{category_id}", json=new_data)
             assert rep.status_code == status.HTTP_404_NOT_FOUND
@@ -98,18 +120,26 @@ class TestUpdateCategory:
 
 @pytest.mark.dependency(depends=["create-category"])
 class TestDeleteCategory:
-    def test_200_ok(self, app: TestClient, db: Session):
+    def test_200_ok(self, app: TestClient, db: Session, user_session: dict[str, Any]):
         category_data = {"label": "Test Category"}
-        rep_poste = app.post("/categories/", json=category_data).json()
-        rep_get = app.delete(f"/categories/{rep_poste["id"]}")
+        rep_poste = app.post(
+            "/categories/", json=category_data, headers=user_session["headers"]
+        ).json()
+        rep_get = app.delete(
+            f"/categories/{rep_poste["id"]}", headers=user_session["headers"]
+        )
 
         assert rep_get.status_code == status.HTTP_200_OK
 
-    def test_404_not_found(self, app: TestClient, db: Session):
+    def test_404_not_found(
+        self, app: TestClient, db: Session, user_session: dict[str, Any]
+    ):
         category_id = 1
         msg = f"Category with ID {category_id} not found"
         with pytest.raises(NotFoundException, match=msg) as excinfo:
-            rep = app.delete(f"/categories/{category_id}")
+            rep = app.delete(
+                f"/categories/{category_id}", headers=user_session["headers"]
+            )
             assert rep.status_code == status.HTTP_404_NOT_FOUND
 
         assert str(excinfo.value).split(": ")[1] == msg

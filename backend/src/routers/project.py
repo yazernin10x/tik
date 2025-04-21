@@ -1,19 +1,17 @@
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Body, Depends, Path, Request, status
 from sqlalchemy.orm import Session
 
 from src.models import Project
 from src.backend.config import LOG_APP
-from src.routers.utils import raise_not_found_if_absent
+from src.routers.utils import raise_not_found_if_absent, get_db
 from src.schemas import ProjectCreate, ProjectRead, ProjectUpdate
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 
 @router.post("/", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
-async def create(request: Request, data: ProjectCreate) -> ProjectRead:
+async def create(data: ProjectCreate, db: Session = Depends(get_db)) -> ProjectRead:
     LOG_APP.info("Attempting to create a project")
-    db: Session = request.state.db
-
     project = Project(**data.model_dump())
     db.add(project)
     db.commit()
@@ -27,9 +25,8 @@ async def create(request: Request, data: ProjectCreate) -> ProjectRead:
 
 
 @router.get("/{id}", response_model=ProjectRead)
-async def get(request: Request, id: int) -> ProjectRead:
+async def get(id: int = Path(...), db: Session = Depends(get_db)) -> ProjectRead:
     LOG_APP.info(f"Attempting to get a project: {id}")
-    db: Session = request.state.db
     project = db.query(Project).filter(Project.id == id).first()
 
     raise_not_found_if_absent(project, f"Project with ID {id} not found")
@@ -42,9 +39,8 @@ async def get(request: Request, id: int) -> ProjectRead:
 
 
 @router.get("/", response_model=list[ProjectRead])
-async def get_all(request: Request) -> list[ProjectRead]:
+async def get_all(db: Session = Depends(get_db)) -> list[ProjectRead]:
     LOG_APP.info("Attempting to get all projects")
-    db: Session = request.state.db
     projects = db.query(Project).all()
 
     raise_not_found_if_absent(projects, "No projects found")
@@ -55,13 +51,12 @@ async def get_all(request: Request) -> list[ProjectRead]:
 
 
 @router.put("/{id}", response_model=ProjectRead)
-async def update(request: Request, id: int, data: ProjectUpdate) -> ProjectRead:
+async def update(
+    id: int = Path(...), data: ProjectUpdate = Body(...), db: Session = Depends(get_db)
+) -> ProjectRead:
     LOG_APP.info(f"Attempting to update a project: {id}")
-    db: Session = request.state.db
     project = db.query(Project).filter(Project.id == id).first()
-
     raise_not_found_if_absent(project, f"Project with ID {id} not found")
-
     update_data = data.model_dump(exclude_unset=True)
 
     if not update_data:
@@ -82,9 +77,8 @@ async def update(request: Request, id: int, data: ProjectUpdate) -> ProjectRead:
 
 
 @router.delete("/{id}")
-async def delete(request: Request, id: int) -> None:
+async def delete(id: int = Path(...), db: Session = Depends(get_db)) -> None:
     LOG_APP.info(f"Attempting to delete a project: {id}")
-    db: Session = request.state.db
     project = db.query(Project).filter(Project.id == id).first()
 
     raise_not_found_if_absent(project, f"Project with ID {id} not found")

@@ -7,6 +7,7 @@ from ._category import Category
 from ._level import Level
 from ._status import Status
 from ._ticket import Ticket
+from ._auth import RevokedToken
 
 
 __all__ = [
@@ -18,6 +19,7 @@ __all__ = [
     "Category",
     "Level",
     "Status",
+    "RevokedToken",
 ]
 
 reassign_module_names(__name__, locals())

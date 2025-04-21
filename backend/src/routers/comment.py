@@ -1,4 +1,4 @@
-from fastapi import Depends
+from fastapi import Body, Depends, Path
 from sqlalchemy.orm import Session
 from fastapi_pagination import Params
 from fastapi import APIRouter, Request, status
@@ -8,17 +8,17 @@ from sqlalchemy.future import select
 
 from src.models import Comment
 from src.backend.config import LOG_APP
-from src.routers.utils import raise_not_found_if_absent
+from src.routers.utils import get_db, raise_not_found_if_absent
 from src.schemas import CommentCreate, CommentRead, CommentUpdate
 
 router = APIRouter(prefix="/comments", tags=["Comments"])
 
 
 @router.post("/", response_model=CommentRead, status_code=status.HTTP_201_CREATED)
-async def create(request: Request, data: CommentCreate) -> CommentRead:
+async def create(
+    data: CommentCreate = Body(...), db: Session = Depends(get_db)
+) -> CommentRead:
     LOG_APP.info("Attempting to create a comment")
-    db: Session = request.state.db
-
     comment = Comment(
         content=data.content,
         creator_id=data.creator_id,
@@ -34,13 +34,10 @@ async def create(request: Request, data: CommentCreate) -> CommentRead:
 
 
 @router.get("/{id}", response_model=CommentRead)
-async def get(request: Request, id: int) -> CommentRead:
+async def get(id: int = Path(...), db: Session = Depends(get_db)) -> CommentRead:
     LOG_APP.info(f"Attempting to get a comment: {id}")
-    db: Session = request.state.db
-
     comment = db.query(Comment).filter(Comment.id == id).first()
     raise_not_found_if_absent(comment, f"Comment with ID {id} not found")
-
     comment_read = CommentRead.model_validate(comment)
     LOG_APP.info(f"Comment retrieved successfully: {comment_read.id}")
     return comment_read
@@ -48,34 +45,30 @@ async def get(request: Request, id: int) -> CommentRead:
 
 # GET /comments/?page=1&size=10
 @router.get("/", response_model=Page[CommentRead])
-async def get_all(request: Request, params: Params = Depends()) -> Page[CommentRead]:
+async def get_all(
+    params: Params = Depends(), db: Session = Depends(get_db)
+) -> Page[CommentRead]:
     LOG_APP.info("Attempting to get comments with pagination")
-    db: Session = request.state.db
-
     comments = paginate(db, select(Comment))
-
     raise_not_found_if_absent(comments.items, "No comments found")
-
     comments_read = [CommentRead.model_validate(comment) for comment in comments.items]
     LOG_APP.info(
         f"Retrieved {len(comments_read)} comments from the database with pagination."
     )
 
     return Page[CommentRead].create(
-        items=comments_read, params=comments.params, total=comments.total
+        items=comments_read, params=params, total=comments.total
     )
 
 
 @router.put("/{id}", response_model=CommentRead)
-async def update(request: Request, id: int, data: CommentUpdate) -> CommentRead:
+async def update(
+    id: int = Path(...), data: CommentUpdate = Body(...), db: Session = Depends(get_db)
+) -> CommentRead:
     LOG_APP.info(f"Attempting to update a comment: {id}")
-    db: Session = request.state.db
     comment = db.query(Comment).filter(Comment.id == id).first()
-
     raise_not_found_if_absent(comment, f"Comment with ID {id} not found")
-
     update_data = data.model_dump(exclude_unset=True)
-
     if not update_data:
         LOG_APP.info(f"No update data provided for comment: {id}")
         return CommentRead.model_validate(comment)
@@ -92,9 +85,8 @@ async def update(request: Request, id: int, data: CommentUpdate) -> CommentRead:
 
 
 @router.delete("/{id}")
-async def delete(request: Request, id: int) -> None:
+async def delete(id: int = Path(...), db: Session = Depends(get_db)) -> None:
     LOG_APP.info(f"Attempting to delete a comment: {id}")
-    db: Session = request.state.db
     comment = db.query(Comment).filter(Comment.id == id).first()
 
     raise_not_found_if_absent(comment, f"Comment with ID {id} not found")

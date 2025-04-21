@@ -12,6 +12,7 @@ from ._comment import (
 from ._user import UserCreate, UserRead, UserReadLight, UserUpdate
 from ._project import ProjectCreate, ProjectRead, ProjectReadLight, ProjectUpdate
 from ._ticket import TicketCreate, TicketRead, TicketReadLight, TicketUpdate
+from ._auth import ForgotPasswordRequest, PasswordResetRequest, Token, TokenData
 
 LevelRead.model_rebuild()
 CategoryRead.model_rebuild()
@@ -47,6 +48,11 @@ __all__ = [
     "UserRead",
     "UserReadLight",
     "UserUpdate",
+    "ForgotPasswordRequest",
+    "PasswordResetRequest",
+    "Token",
+    "TokenData",
 ]
+
 
 reassign_module_names(__name__, locals())

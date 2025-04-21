@@ -5,9 +5,9 @@ from .database import (
     invalid_request_error_handler,
     stale_data_error_handler,
     not_found_exception_handler,
+    credentials_exception_handler,
 )
 from ._validatation import validation_error_handler
-from .utils import handle_error
 
 __all__ = [
     "integrity_error_handler",
@@ -16,7 +16,7 @@ __all__ = [
     "stale_data_error_handler",
     "validation_error_handler",
     "not_found_exception_handler",
-    "handle_error",
+    "credentials_exception_handler",
 ]
 
 

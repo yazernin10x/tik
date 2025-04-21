@@ -1,17 +1,17 @@
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Depends, Request, status, Body, Path
 from sqlalchemy.orm import Session
 from src.models import Ticket
 from src.backend.config import LOG_APP
-from src.routers.utils import raise_not_found_if_absent
+from src.routers.utils import get_db, raise_not_found_if_absent
 from src.schemas._ticket import TicketCreate, TicketRead, TicketUpdate
+
 
 router = APIRouter(prefix="/tickets", tags=["Tickets"])
 
 
 @router.post("/", response_model=TicketRead, status_code=status.HTTP_201_CREATED)
-async def create(request: Request, data: TicketCreate) -> TicketRead:
+async def create(data: TicketCreate, db: Session = Depends(get_db)) -> TicketRead:
     LOG_APP.info(f"Attempting to create a ticket {data.title}")
-    db: Session = request.state.db
 
     ticket = Ticket(
         title=data.title,
@@ -32,9 +32,8 @@ async def create(request: Request, data: TicketCreate) -> TicketRead:
 
 
 @router.get("/{id}", response_model=TicketRead)
-async def get(request: Request, id: int) -> TicketRead:
+async def get(id: int = Path(...), db: Session = Depends(get_db)) -> TicketRead:
     LOG_APP.info(f"Attempting to get a ticket: {id}")
-    db: Session = request.state.db
     ticket = db.query(Ticket).filter(Ticket.id == id).first()
 
     raise_not_found_if_absent(ticket, f"Ticket with ID {id} not found")
@@ -47,9 +46,8 @@ async def get(request: Request, id: int) -> TicketRead:
 
 
 @router.get("/", response_model=list[TicketRead])
-async def get_all(request: Request) -> list[TicketRead]:
+async def get_all(db: Session = Depends(get_db)) -> list[TicketRead]:
     LOG_APP.info("Attempting to get all tickets")
-    db: Session = request.state.db
 
     tickets = db.query(Ticket).all()
 
@@ -61,9 +59,10 @@ async def get_all(request: Request) -> list[TicketRead]:
 
 
 @router.put("/{id}", response_model=TicketRead)
-async def update(request: Request, id: int, data: TicketUpdate) -> TicketRead:
+async def update(
+    id: int = Path(...), data: TicketUpdate = Body(...), db: Session = Depends(get_db)
+) -> TicketRead:
     LOG_APP.info(f"Attempting to update a ticket: {id}")
-    db: Session = request.state.db
     ticket = db.query(Ticket).filter(Ticket.id == id).first()
 
     raise_not_found_if_absent(ticket, f"Ticket with ID {id} not found")
@@ -86,9 +85,8 @@ async def update(request: Request, id: int, data: TicketUpdate) -> TicketRead:
 
 
 @router.delete("/{id}")
-async def delete(request: Request, id: int) -> None:
+async def delete(id: int = Path(...), db: Session = Depends(get_db)) -> None:
     LOG_APP.info(f"Attempting to delete a ticket: {id}")
-    db: Session = request.state.db
     ticket = db.query(Ticket).filter(Ticket.id == id).first()
 
     raise_not_found_if_absent(ticket, f"Ticket with ID {id} not found")

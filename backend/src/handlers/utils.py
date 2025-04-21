@@ -34,8 +34,9 @@ async def handle_error(
     if DEBUG:
         raise
 
-    if not hasattr(exc, "status_code") and "validation".lower() in str(exc):
-        status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    if not hasattr(exc, "status_code"):
+        if "validation".lower() in str(exc):
+            status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     else:
         status_code = exc.status_code
 

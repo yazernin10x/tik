@@ -41,10 +41,10 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-OAUTH2_SCHEME = OAuth2PasswordBearer(tokenUrl="token")
+OAUTH2_SCHEME = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 DEBUG = True
-TEST = True
+TEST = False
 
 # Database configuration
 SQLALCHEMY_DATABASE_URL = (

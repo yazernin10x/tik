@@ -1,21 +1,23 @@
 from typing import Annotated
-from fastapi import APIRouter, Body, Path, Query, Request, status
+from fastapi import APIRouter, Body, Depends, Path, Query, status
+from sqlalchemy.orm import Session
 
-
-from src.models import Category
+from src.models import Category, User
 from src.backend.config import LOG_APP
-from src.routers.utils import raise_not_found_if_absent
+from src.routers.utils import raise_not_found_if_absent, get_current_user, get_db
 from src.schemas import CategoryCreate, CategoryRead, CategoryUpdate
+
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
 
 
 @router.post("/", response_model=CategoryRead, status_code=status.HTTP_201_CREATED)
 async def create(
-    request: Request, data: Annotated[CategoryCreate, Body()]
+    data: Annotated[CategoryCreate, Body()],
+    db: Session = Depends(get_db),
+    # current_user: User = Depends(get_current_user),
 ) -> CategoryRead:
     LOG_APP.info(f"Attempting to create a category: {data.label}")
-    db = request.state.db
     category = Category(label=data.label)
 
     db.add(category)
@@ -29,9 +31,10 @@ async def create(
 
 
 @router.get("/{id}", response_model=CategoryRead)
-async def get(request: Request, id: Annotated[int, Path()]) -> CategoryRead:
+async def get(
+    id: Annotated[int, Path()], db: Session = Depends(get_db)
+) -> CategoryRead:
     LOG_APP.info(f"Attempting to get a category: {id}")
-    db = request.state.db
     category = db.query(Category).filter(Category.id == id).first()
 
     raise_not_found_if_absent(category, f"Category with ID {id} not found")
@@ -44,9 +47,8 @@ async def get(request: Request, id: Annotated[int, Path()]) -> CategoryRead:
 
 
 @router.get("/", response_model=list[CategoryRead])
-async def get_all(request: Request) -> list[CategoryRead]:
+async def get_all(db: Session = Depends(get_db)) -> list[CategoryRead]:
     LOG_APP.info("Attempting to get all categories")
-    db = request.state.db
     categories = db.query(Category).all()
 
     raise_not_found_if_absent(categories, "No categories found")
@@ -58,12 +60,11 @@ async def get_all(request: Request) -> list[CategoryRead]:
 
 @router.put("/{id}", response_model=CategoryRead)
 async def update(
-    request: Request,
     id: Annotated[int, Path(ge=0)],
     data: Annotated[CategoryUpdate, Body()],
+    db: Session = Depends(get_db),
 ) -> CategoryRead:
     LOG_APP.info(f"Attempting to update a category: {id}")
-    db = request.state.db
     category = db.query(Category).filter(Category.id == id).first()
 
     raise_not_found_if_absent(category, f"Category with ID {id} not found")
@@ -86,11 +87,9 @@ async def update(
 
 @router.delete("/{id}", response_model=CategoryRead)
 async def delete(
-    request: Request,
-    id: Annotated[int, Path()],
+    id: Annotated[int, Path()], db: Session = Depends(get_db)
 ) -> CategoryRead:
     LOG_APP.info(f"Attempting to delete a category: {id}")
-    db = request.state.db
     category = db.query(Category).filter(Category.id == id).first()
 
     raise_not_found_if_absent(category, f"Category with ID {id} not found")

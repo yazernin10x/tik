@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Body, Depends, Path, Request, status
+from sqlalchemy.orm import Session
 
 from src.models import Level
 from src.backend.config import LOG_APP
 from src.exceptions import NotFoundException
-from src.routers.utils import raise_not_found_if_absent
+from src.routers.utils import get_db, raise_not_found_if_absent
 from src.schemas import LevelCreate, LevelRead, LevelUpdate
 
 
@@ -11,10 +12,8 @@ router = APIRouter(prefix="/levels", tags=["Levels"])
 
 
 @router.post("/", response_model=LevelRead, status_code=status.HTTP_201_CREATED)
-async def create(request: Request, data: LevelCreate) -> LevelRead:
+async def create(data: LevelCreate, db: Session = Depends(get_db)) -> LevelRead:
     LOG_APP.info(f"Attempting to create a level: {data.label}")
-    db = request.state.db
-
     level = Level(label=data.label)
     db.add(level)
     db.commit()
@@ -26,22 +25,18 @@ async def create(request: Request, data: LevelCreate) -> LevelRead:
 
 
 @router.get("/{id}", response_model=LevelRead)
-async def get(request: Request, id: int) -> LevelRead:
+async def get(id: int = Path(...), db: Session = Depends(get_db)) -> LevelRead:
     LOG_APP.info(f"Attempting to get a level: {id}")
-    db = request.state.db
     level = db.query(Level).filter(Level.id == id).first()
-
     raise_not_found_if_absent(level, f"Level with ID {id} not found")
-
     level_read = LevelRead.model_validate(level)
     LOG_APP.info(f"Level retrieved successfully: {level_read.id} - {level_read.label}")
     return level_read
 
 
 @router.get("/", response_model=list[LevelRead])
-async def get_all(request: Request) -> list[LevelRead]:
+async def get_all(db: Session = Depends(get_db)) -> list[LevelRead]:
     LOG_APP.info("Attempting to get all levels")
-    db = request.state.db
     levels = db.query(Level).all()
 
     if not levels:
@@ -56,9 +51,10 @@ async def get_all(request: Request) -> list[LevelRead]:
 
 
 @router.put("/{id}", response_model=LevelRead)
-async def update(request: Request, id: int, data: LevelUpdate) -> LevelRead:
+async def update(
+    id: int = Path(...), data: LevelUpdate = Body(...), db: Session = Depends(get_db)
+) -> LevelRead:
     LOG_APP.info(f"Attempting to update a level: {id}")
-    db = request.state.db
     level = db.query(Level).filter(Level.id == id).first()
 
     raise_not_found_if_absent(level, f"Level with ID {id} not found")
@@ -78,9 +74,8 @@ async def update(request: Request, id: int, data: LevelUpdate) -> LevelRead:
 
 
 @router.delete("/{id}")
-async def delete(request: Request, id: int) -> None:
+async def delete(id: int = Path(...), db: Session = Depends(get_db)) -> None:
     LOG_APP.info(f"Attempting to delete a level: {id}")
-    db = request.state.db
     level = db.query(Level).filter(Level.id == id).first()
 
     raise_not_found_if_absent(level, f"Level with ID {id} not found")

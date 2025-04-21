@@ -1,25 +1,37 @@
+from typing import Any
 import pytest
+from sqlalchemy import create_engine
+from src.routers.auth import create_access_token
 from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 
 
-from main import app
-from src.models import Base
-from src.backend.config import ENGINE, SESSION_LOCAL
+from app import create_app
+from src.models import Base, User
+from src.exceptions import NotFoundException
+from src.backend.config import ENGINE, SESSION_LOCAL, SQLALCHEMY_DATABASE_URL
+from sqlalchemy.orm import sessionmaker
+
+USER_PASSWORD = "SecurePass123"
+USER_NAME = "johndoe"
+USER_EMAIL = "yazernin10x@gmail.com"
 
 
 @pytest.fixture(name="db", scope="function")
 def db_session():
+
+    # ENGINE = create_engine(SQLALCHEMY_DATABASE_URL, echo=True)  # noqa: F811
+    # session = sessionmaker(autocommit=False, autoflush=False, bind=ENGINE)
     Base.metadata.create_all(ENGINE)
-    session = SESSION_LOCAL()
-    yield session
-    session.close()
+    db = SESSION_LOCAL()
+    yield db
+    db.close()
     Base.metadata.drop_all(ENGINE)
 
 
 @pytest.fixture(name="app", scope="module")
 def test_app():
-    client = TestClient(app)
+    client = TestClient(create_app())
     yield client
 
 
@@ -39,15 +51,37 @@ def level_data(app: TestClient, db: Session) -> dict:
 
 
 @pytest.fixture(scope="function")
-def user_data(app: TestClient, db: Session) -> dict:
+def user_data() -> dict:
     return {
         "first_name": "John",
         "last_name": "Doe",
-        "username": "johndoe",
-        "email": "johndoe@example.com",
+        "username": USER_NAME,
+        "email": USER_EMAIL,
         "role": "user",
-        "password": "SecurePass123",
+        "password": USER_PASSWORD,
     }
+
+
+@pytest.fixture(name="user", scope="function")
+def create_user(app: TestClient, db: Session, user_data: dict) -> User:
+    app.post("/users/", json=user_data).json()
+    user = db.query(User).filter(User.username == user_data["username"]).first()
+    if user is None:
+        raise NotFoundException("User not found")
+    return user
+
+
+@pytest.fixture(name="user_session", scope="function")
+def create_user_session(app: TestClient, user: User) -> dict[str, Any]:
+    response = app.post(
+        "/auth/login",
+        data={"username": user.username, "password": USER_PASSWORD},
+    )
+
+    token = response.json().get("access_token")
+    token_type = response.json().get("token_type")
+    headers = {"Authorization": f"{token_type} {token}"}
+    return {"user": user, "token": token, "headers": headers}
 
 
 @pytest.fixture(scope="function")
